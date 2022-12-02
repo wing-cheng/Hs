@@ -1,0 +1,12 @@
+name: Tortoise
+version: 1.0
+cabal-version: >= 1.11
+build-type: Simple
+license: AllRightsReserved
+stability: experimental
+Executable Tortoise
+  main-is: Tortoise.hs
+  buildable: True
+  build-depends:
+      base -any,
+      QuickCheck -any
