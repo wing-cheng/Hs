@@ -25,7 +25,10 @@ sizeOf :: QueueTree a -> Size
 sizeOf = fst . nodeInfo
 
 minusSize :: Size -> Size
-minusSize s1 = size ((unSize s1) - 1)
+minusSize s1 = s1 <> size (-1)
+
+plusSize :: Size -> Size
+plusSize s1 = s1 <> size 1
 
 maxPrio :: QueueTree a -> Priority
 maxPrio = snd . nodeInfo
@@ -97,10 +100,9 @@ node l r = Node (sizeOf l <> sizeOf r, ((maxPrio l) <> (maxPrio r))) l r
 pop :: QueueTree a -> (QueueTree a, Maybe a)
 -- go to the side with equal priority to the current node
 -- assume that the input tree is well-formed
--- if we are to go to left hand side, modify the priority to be priority of RHS
 pop (Leaf _ v) = (Null, Just v)
 pop Null = (Null, Nothing)
-pop (Node (s, p) Null Null) = (Null, Nothing)
+pop (Node (s, p) Null Null) = error "QueueTree is not well-formed!"
 -- right is NOT Null
 pop (Node (s, p) Null r) = let cur_prio = unPriority p in
     case maxPrio r of
@@ -119,7 +121,7 @@ pop (Node (s, p) l Null) = let cur_prio = unPriority p in
                 fst_pop_res = fst pop_res
             in case fst_pop_res of
                 Null -> (Null, snd pop_res)
-                otherwise ->  (Node (minusSize s, maxPrio fst_pop_res) fst_pop_res Null, snd pop_res)
+                otherwise -> (Node (minusSize s, maxPrio fst_pop_res) fst_pop_res Null, snd pop_res)
         otherwise -> error "QueueTree is not well-formed!"
 -- assume both left and right are NOT Null
 pop (Node (s, p) l r) = let cur_prio = unPriority p in
@@ -141,23 +143,23 @@ pop (Node (s, p) l r) = let cur_prio = unPriority p in
             
 
 
--- 3 arguments
 insert :: Priority -> a -> QueueTree a -> QueueTree a
 insert p v Null = leaf p v
--- go to the side with smaller size
+insert p v (Node (s', p') Null Null) = error "QueueTree is not well-formed!"
+insert p v (Node (s', p') l Null) = Node (plusSize s', p <> p') l (Leaf (size 1, p) v)
+insert p v (Node (s', p') Null r) = Node (plusSize s', p <> p') (Leaf (size 1, p) v) r
+-- assume that both left and right sub-tree are NOT Null
+-- insert to the side with smaller size
 insert p v (Node (s, p') l r) =
-    case l of
-        Null -> Node (s, (p <> p')) l (insert p v r)
-        otherwise -> case r of
-            Null -> Node (s,  (p <> p')) l (insert p v r)
-            otherwise -> case lh <= rh of
-                True -> Node (s, (p <> p')) (insert p v l) r
-                False -> Node (s, (p <> p')) l (insert p v r)
-                where
-                    lh = sizeOf l
-                    rh = sizeOf r
+    case lh <= rh of
+        True -> Node (s <> size 1, (p <> p')) (insert p v l) r
+        False -> Node (s <> size 1, (p <> p')) l (insert p v r)
+        where
+            lh = sizeOf l
+            rh = sizeOf r
+-- insert to leaf
 -- put the input leaf to LHS and insert a new leaf to RHS
-insert p v lf = Node (sizeOf lf, maxPrio lf <> p) lf (leaf p v)
+insert p v leaf' = Node (size 2, maxPrio leaf' <> p) leaf' (leaf p v)
 
 
 
@@ -167,18 +169,15 @@ insert p v lf = Node (sizeOf lf, maxPrio lf <> p) lf (leaf p v)
 fromList :: [(Priority, a)] -> QueueTree a
 fromList [] = Null
 fromList ((p, q):xs) = insert p q (fromList xs)
-{-
-    uncurry insert (p, v) == insert p v
-    foldr (uncurry insert) Null [(p, v)]
-        = (uncurry insert) (p, v) Null
-        = insert p v Null
--}
 
 -- Hint: you can use `fromList` to implement an `Arbitrary`
 -- instance for `QueueTree`, allowing you to test your work.
--- instance Arbitrary QueueTree where
-    -- arbitrary = fromList <$> arbitrary
-
+-- instance Arbitrary a where
+    -- arbitrary = Char
+-- instance Arbitrary (QueueTree a) where
+    -- arbitrary = fromList <*> [arbitrary]
+-- instance Arbitrary (QueueTree a) where
+    -- arbitrary = fromList <$> [(arbitrary, arbitrary :: Char)]
 
 -- Task 3. Implement stateful versions of the pop and insert
 --         operations above using the `State` type in Haskell's
@@ -192,13 +191,12 @@ fromList ((p, q):xs) = insert p q (fromList xs)
 pop' :: State (QueueTree a) (Maybe a)
 pop' = error "'pop'' not implemented"
 
+
 insert' :: Priority -> a -> State (QueueTree a) ()
 insert' = error "'insert'' not implemented"
 
 peek' :: State (QueueTree a) (Maybe a)
 peek' = error "'peek'' not implemented"
-
-
 
 -- END OF EXERCISE --
 
