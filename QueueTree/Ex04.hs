@@ -2,7 +2,8 @@ module Ex04 where
 
 import Data.Semigroup
 import Data.Monoid
-import Control.Monad.State (State, get, put, evalState)
+import Control.Monad.State (State, get, put, evalState, runState, execState)
+import Data.Tuple (swap)
 import Test.QuickCheck
 import Priority
 import Size
@@ -14,7 +15,7 @@ data QueueTree a
     = Null
     | Leaf NodeInfo a
     | Node NodeInfo (QueueTree a) (QueueTree a)
-    deriving (Show)
+    deriving (Show, Eq)
 
 nodeInfo :: QueueTree a -> NodeInfo
 nodeInfo Null = mempty
@@ -189,14 +190,64 @@ fromList ((p, q):xs) = insert p q (fromList xs)
 --         implementations!
 
 pop' :: State (QueueTree a) (Maybe a)
-pop' = error "'pop'' not implemented"
+-- pop' = error "'pop'' not implemented"
+pop' =
+    get >>= \qt ->
+    let
+        pop_res = pop qt
+    in 
+    put (fst pop_res) >>    -- same as: put t >>= \() ->
+    return (snd pop_res)
+-- pop' quickCheck
+qcheck_pop' :: Eq a => QueueTree a -> Bool
+qcheck_pop' t = swap (runState pop' t) == pop t
+
+
+pop_do :: State (QueueTree a) (Maybe a)
+pop_do = do
+    t <- get
+    let pop_res = pop t
+    put (fst pop_res)
+    return (snd pop_res)
+-- pop_do quickCheck
+qcheck_pop_do :: Eq a => QueueTree a -> Bool
+qcheck_pop_do t = runState pop' t == runState pop_do t
 
 
 insert' :: Priority -> a -> State (QueueTree a) ()
-insert' = error "'insert'' not implemented"
+insert' p v =
+    get >>= \qt ->
+    put (insert p v qt)
+-- insert' quickCheck
+qcheck_insert' :: Eq a => Priority -> a -> QueueTree a -> Bool
+qcheck_insert' p v t = execState (insert' p v) t == insert p v t
+
+
+insert_do :: Priority -> a -> State (QueueTree a) ()
+insert_do p v = do
+    qt <- get
+    put (insert p v qt)
+-- insert_do quickCheck
+qcheck_insert_do :: Eq a => Priority -> a -> QueueTree a -> Bool
+qcheck_insert_do p v t = execState (insert' p v) t == execState (insert_do p v) t
+
 
 peek' :: State (QueueTree a) (Maybe a)
-peek' = error "'peek'' not implemented"
+peek' =
+    get >>= \qt ->
+    let
+        pop_res = pop qt
+    in
+    put qt >>
+    return (snd pop_res)
+
+peak_do :: State (QueueTree a) (Maybe a)
+peak_do = do
+    qt <- get
+    rv <- pop'
+    put qt      -- update the state
+    return rv   -- update the value
+
 
 -- END OF EXERCISE --
 
