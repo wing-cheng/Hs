@@ -1,1 +1,1 @@
-# Exercises I did on Haskell programming
+# Exercises I did to learn Haskell programming
